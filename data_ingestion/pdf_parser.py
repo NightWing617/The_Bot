@@ -134,7 +134,7 @@ def parse_racecard(pdf_path: str) -> Dict[str, Any]:
     try:
         logger.info(f"Starting to parse PDF: {pdf_path}")
         
-        # Read PDF content
+        # Read PDF content using pdfplumber for better text extraction
         with pdfplumber.open(pdf_path) as pdf:
             raw_text = ""
             horses = []
@@ -159,7 +159,7 @@ def parse_racecard(pdf_path: str) -> Dict[str, Any]:
                             key = key.strip().lower()
                             value = value.strip()
                             
-                            if key == 'horse':
+                            if key == 'horse' or 'name' in key.lower():
                                 if current_horse:
                                     horses.append(current_horse)
                                 current_horse = {'horse': value}
@@ -179,6 +179,9 @@ def parse_racecard(pdf_path: str) -> Dict[str, Any]:
         for horse in horses:
             try:
                 cleaned = clean_horse_data(horse)
+                # Ensure horse name is preserved
+                if 'horse' not in cleaned and 'horse' in horse:
+                    cleaned['horse'] = horse['horse']
                 cleaned_horses.append(cleaned)
             except ValueError as e:
                 logger.warning(f"Skipping invalid horse data: {str(e)}")

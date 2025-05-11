@@ -50,31 +50,52 @@ def clean_horse_data(horse_data: Dict[str, Any]) -> Dict[str, Any]:
     """Clean individual horse data entries."""
     cleaned = {}
     
-    # Clean horse name
+    # Clean and validate horse name (must be present)
+    if 'horse' not in horse_data or not horse_data['horse']:
+        raise ValueError("Missing horse name")
     cleaned['horse'] = str(horse_data['horse']).strip()
+    if not cleaned['horse']:
+        raise ValueError("Empty horse name")
     
-    # Clean odds
-    cleaned['odds'] = float(horse_data['odds'])
-    if cleaned['odds'] <= 1:
-        raise ValueError(f"Invalid odds value: {cleaned['odds']}")
+    # Clean odds (required field)
+    if 'odds' not in horse_data:
+        raise ValueError(f"Missing odds for horse {cleaned['horse']}")
+    try:
+        cleaned['odds'] = float(horse_data['odds'])
+        if cleaned['odds'] <= 1:
+            raise ValueError(f"Invalid odds value: {cleaned['odds']}")
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Invalid odds for horse {cleaned['horse']}: {str(e)}")
     
     # Clean age if present
     if 'age' in horse_data and horse_data['age']:
-        cleaned['age'] = int(horse_data['age'])
-        if not 2 <= cleaned['age'] <= 20:
-            raise ValueError(f"Invalid age value: {cleaned['age']}")
+        try:
+            cleaned['age'] = int(horse_data['age'])
+            if not 2 <= cleaned['age'] <= 20:
+                logger.warning(f"Unusual age value for {cleaned['horse']}: {cleaned['age']}")
+        except (TypeError, ValueError):
+            logger.warning(f"Invalid age value for {cleaned['horse']}, setting to None")
+            cleaned['age'] = None
     
     # Clean weight if present
     if 'weight' in horse_data and horse_data['weight']:
-        cleaned['weight'] = float(horse_data['weight'])
-        if not 300 <= cleaned['weight'] <= 700:
-            raise ValueError(f"Invalid weight value: {cleaned['weight']}")
+        try:
+            cleaned['weight'] = float(horse_data['weight'])
+            if not 300 <= cleaned['weight'] <= 700:
+                logger.warning(f"Unusual weight value for {cleaned['horse']}: {cleaned['weight']}")
+        except (TypeError, ValueError):
+            logger.warning(f"Invalid weight value for {cleaned['horse']}, setting to None")
+            cleaned['weight'] = None
     
     # Clean form if present
     if 'form' in horse_data and horse_data['form']:
-        cleaned['form'] = str(horse_data['form']).strip()
-        if not all(c in '0123456789-P' for c in cleaned['form']):
-            raise ValueError(f"Invalid form value: {cleaned['form']}")
+        form = str(horse_data['form']).strip()
+        if form and all(c in '0123456789-P' for c in form):
+            cleaned['form'] = form
+        else:
+            cleaned['form'] = '0-0-0'  # Default form for invalid/missing data
+    else:
+        cleaned['form'] = '0-0-0'
     
     # Clean jockey if present
     if 'jockey' in horse_data and horse_data['jockey']:
@@ -96,18 +117,29 @@ def clean_race_data(raw_data: Dict[str, Any]) -> pd.DataFrame:
         validate_raw_data(raw_data)
         
         # Get horses data
+        horses = []
         if 'horses' in raw_data and raw_data['horses']:
-            horses = raw_data['horses']
-        elif 'raw_text' in raw_data:
-            horses = extract_horses_from_raw_text(raw_data['raw_text'])
-        else:
+            horses.extend(raw_data['horses'])
+        
+        # Extract additional horses from raw text if available
+        if 'raw_text' in raw_data and raw_data['raw_text']:
+            text_horses = extract_horses_from_raw_text(raw_data['raw_text'])
+            
+            # Merge horses based on names to avoid duplicates
+            existing_names = {h['horse'] for h in horses}
+            for horse in text_horses:
+                if horse['horse'] not in existing_names:
+                    horses.append(horse)
+                    existing_names.add(horse['horse'])
+            
+        if not horses:
             raise ValueError("No valid horse data found")
             
         # Convert to DataFrame
         df = pd.DataFrame(horses)
         
         # Ensure required columns exist
-        required_cols = ['horse', 'age', 'weight', 'odds', 'form']
+        required_cols = ['horse', 'odds']  # Minimum required columns
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
             raise ValueError(f"Missing required columns: {missing_cols}")

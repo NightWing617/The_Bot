@@ -1,0 +1,16 @@
+
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+*.code-workspace
+.env
+.venv/
+env/
+venv/
+ENV/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints
+*.log
+shap_summary_plot.png

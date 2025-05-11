@@ -1,0 +1,8 @@
+
+# config.yaml
+
+bankroll: 1000.0
+kelly_fraction: 1.0
+model_path: "model.pkl"
+racecard_pdf: "data/raw/sample_racecard.pdf"
+log_level: "DEBUG"

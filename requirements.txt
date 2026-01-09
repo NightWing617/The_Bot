@@ -18,3 +18,4 @@ pylint>=2.15.0
 python-dotenv>=0.20.0
 joblib>=1.2.0
 backoff>=2.2.0
+urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
